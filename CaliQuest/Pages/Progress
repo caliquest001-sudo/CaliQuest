@@ -1,0 +1,181 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from "@/components/ui/button";
+import { Loader2, ArrowLeft, Plus, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import LevelBadge from '@/components/LevelBadge';
+import CreatePostModal from '@/components/progress/CreatePostModal';
+import ProgressPostCard from '@/components/progress/ProgressPostCard';
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function Progress() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const { data: user } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => base44.auth.me()
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ['userProfile', user?.email],
+    queryFn: async () => {
+      const profiles = await base44.entities.UserProfile.filter({ user_id: user.email });
+      return profiles[0] || null;
+    },
+    enabled: !!user?.email
+  });
+
+  const monthKey = format(currentMonth, 'yyyy-MM');
+
+  const { data: posts = [], isLoading } = useQuery({
+    queryKey: ['progressPosts', monthKey],
+    queryFn: async () => {
+      const allPosts = await base44.entities.ProgressPost.filter({ month: monthKey });
+      return allPosts.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  });
+
+  const handlePreviousMonth = () => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1));
+  };
+
+  const handleNextMonth = () => {
+    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1);
+    const now = new Date();
+    if (nextMonth <= now) {
+      setCurrentMonth(nextMonth);
+    }
+  };
+
+  const isCurrentMonth = format(currentMonth, 'yyyy-MM') === format(new Date(), 'yyyy-MM');
+  const currentLevel = profile?.level || 'beginner';
+  const levelColor = levelColors[currentLevel];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: levelColor }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-zinc-950 pb-24">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-800">
+        <div className="max-w-4xl mx-auto px-6 py-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(createPageUrl('Home'))}
+            className="text-zinc-400 hover:text-white -ml-2 mb-4"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back
+          </Button>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `${levelColor}20` }}
+              >
+                <TrendingUp className="w-5 h-5" style={{ color: levelColor }} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Progress Feed</h1>
+                <p className="text-zinc-400 text-sm">Share your gains</p>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="font-bold text-zinc-900"
+              style={{ backgroundColor: levelColor }}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              New Post
+            </Button>
+          </div>
+
+          {/* Month Selector */}
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePreviousMonth}
+              className="text-zinc-400 hover:text-white"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            
+            <h2 className="text-lg font-bold text-white min-w-[140px] text-center">
+              {format(currentMonth, 'MMMM yyyy')}
+            </h2>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNextMonth}
+              disabled={isCurrentMonth}
+              className="text-zinc-400 hover:text-white disabled:opacity-30"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Feed */}
+      <div className="max-w-4xl mx-auto px-6 py-6">
+        {posts.length === 0 ? (
+          <div className="text-center py-16">
+            <div 
+              className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
+              style={{ backgroundColor: `${levelColor}20` }}
+            >
+              <TrendingUp className="w-10 h-10" style={{ color: levelColor }} />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">No posts yet</h3>
+            <p className="text-zinc-400 mb-6">Be the first to share your progress this month!</p>
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="font-bold text-zinc-900"
+              style={{ backgroundColor: levelColor }}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create First Post
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {posts.map((post) => (
+              <ProgressPostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Post Modal */}
+      <CreatePostModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        user={user}
+        profile={profile}
+        currentMonth={monthKey}
+      />
+    </div>
+  );
+}

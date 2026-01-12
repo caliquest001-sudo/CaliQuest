@@ -1,0 +1,52 @@
+{
+  "name": "ProgressPost",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User who created the post"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Display name of the user"
+    },
+    "user_level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "elite"
+      ],
+      "description": "User's skill level at time of post"
+    },
+    "media_url": {
+      "type": "string",
+      "description": "URL to uploaded image or video"
+    },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video"
+      ],
+      "description": "Type of media uploaded"
+    },
+    "caption": {
+      "type": "string",
+      "description": "Optional text caption"
+    },
+    "month": {
+      "type": "string",
+      "description": "Month of post in YYYY-MM format"
+    }
+  },
+  "required": [
+    "user_id",
+    "user_name",
+    "user_level",
+    "media_url",
+    "media_type",
+    "month"
+  ]
+}

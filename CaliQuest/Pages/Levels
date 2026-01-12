@@ -1,0 +1,282 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { ArrowLeft, Lock, CheckCircle, Dumbbell, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import LevelBadge from '@/components/LevelBadge';
+import { cn } from "@/lib/utils";
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+const levelsData = {
+  beginner: {
+    title: 'Beginner',
+    subtitle: 'Build Your Foundation',
+    description: 'Master the fundamental movements that form the base of all calisthenics skills. Focus on form, control, and building strength.',
+    exercises: [
+      { name: 'Wall Push-ups', reps: '3x15', difficulty: 1 },
+      { name: 'Incline Push-ups', reps: '3x12', difficulty: 1 },
+      { name: 'Knee Push-ups', reps: '3x10', difficulty: 2 },
+      { name: 'Regular Push-ups', reps: '3x8', difficulty: 2 },
+      { name: 'Bodyweight Squats', reps: '3x20', difficulty: 1 },
+      { name: 'Lunges', reps: '3x12 each', difficulty: 1 },
+      { name: 'Plank Hold', reps: '3x30s', difficulty: 1 },
+      { name: 'Dead Hang', reps: '3x20s', difficulty: 2 },
+      { name: 'Negative Pull-ups', reps: '3x5', difficulty: 3 },
+      { name: 'Australian Rows', reps: '3x10', difficulty: 2 }
+    ]
+  },
+  intermediate: {
+    title: 'Intermediate',
+    subtitle: 'Level Up Your Game',
+    description: 'Build upon your foundation with more challenging movements. Develop pulling strength and work towards advanced skills.',
+    exercises: [
+      { name: 'Diamond Push-ups', reps: '3x12', difficulty: 2 },
+      { name: 'Archer Push-ups', reps: '3x8 each', difficulty: 3 },
+      { name: 'Pull-ups', reps: '3x8', difficulty: 2 },
+      { name: 'Chin-ups', reps: '3x10', difficulty: 2 },
+      { name: 'Dips', reps: '3x10', difficulty: 2 },
+      { name: 'Pistol Squat Progressions', reps: '3x5 each', difficulty: 3 },
+      { name: 'L-sit Holds', reps: '3x15s', difficulty: 3 },
+      { name: 'Tuck Front Lever', reps: '3x10s', difficulty: 3 },
+      { name: 'Wall Handstand', reps: '3x30s', difficulty: 2 },
+      { name: 'Hanging Leg Raises', reps: '3x12', difficulty: 2 }
+    ]
+  },
+  advanced: {
+    title: 'Advanced',
+    subtitle: 'Push Your Limits',
+    description: 'Master high-skill movements that require significant strength and body control. Work on levers, planches, and complex skills.',
+    exercises: [
+      { name: 'Muscle-ups', reps: '3x5', difficulty: 3 },
+      { name: 'Freestanding Handstand', reps: '3x20s', difficulty: 3 },
+      { name: 'Front Lever', reps: '3x10s', difficulty: 3 },
+      { name: 'Back Lever', reps: '3x10s', difficulty: 3 },
+      { name: 'Pistol Squats', reps: '3x8 each', difficulty: 2 },
+      { name: 'One Arm Push-up Progressions', reps: '3x5 each', difficulty: 3 },
+      { name: 'Straddle Planche Leans', reps: '3x15s', difficulty: 3 },
+      { name: 'Dragon Flag', reps: '3x8', difficulty: 3 },
+      { name: 'Handstand Push-ups (wall)', reps: '3x8', difficulty: 3 },
+      { name: 'Typewriter Pull-ups', reps: '3x6', difficulty: 3 }
+    ]
+  },
+  elite: {
+    title: 'Elite',
+    subtitle: 'Become Legendary',
+    description: 'The pinnacle of calisthenics mastery. These skills represent years of dedicated training and exceptional body control.',
+    exercises: [
+      { name: 'Full Planche', reps: '3x8s', difficulty: 3 },
+      { name: 'Iron Cross', reps: '3x5s', difficulty: 3 },
+      { name: 'One Arm Pull-up', reps: '3x3 each', difficulty: 3 },
+      { name: 'Human Flag', reps: '3x10s', difficulty: 3 },
+      { name: '90° Push-ups', reps: '3x5', difficulty: 3 },
+      { name: 'Victorian Cross', reps: '3x5s', difficulty: 3 },
+      { name: 'One Arm Front Lever', reps: '3x5s each', difficulty: 3 },
+      { name: 'Maltese', reps: '3x5s', difficulty: 3 },
+      { name: 'Free Handstand Push-ups', reps: '3x5', difficulty: 3 },
+      { name: 'Impossible Dips', reps: '3x5', difficulty: 3 }
+    ]
+  }
+};
+
+export default function Levels() {
+  const navigate = useNavigate();
+  const [expandedLevel, setExpandedLevel] = useState(null);
+
+  const { data: user } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => base44.auth.me()
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ['userProfile', user?.email],
+    queryFn: async () => {
+      const profiles = await base44.entities.UserProfile.filter({ user_id: user.email });
+      return profiles[0] || null;
+    },
+    enabled: !!user?.email
+  });
+
+  const levelOrder = ['beginner', 'intermediate', 'advanced', 'elite'];
+  const currentLevelIndex = levelOrder.indexOf(profile?.level || 'beginner');
+
+  const handleLevelClick = (levelKey, isUnlocked) => {
+    if (!isUnlocked) return;
+    setExpandedLevel(expandedLevel === levelKey ? null : levelKey);
+  };
+
+  return (
+    <div className="min-h-screen bg-zinc-950 pb-24">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-800">
+        <div className="max-w-2xl mx-auto px-6 py-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(createPageUrl('Home'))}
+            className="text-zinc-400 hover:text-white -ml-2"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold text-white mt-4">Skill Levels</h1>
+          <p className="text-zinc-400 text-sm mt-1">
+            Your Current Level: <span className="font-semibold" style={{ color: levelColors[profile?.level || 'beginner'] }}>
+              {(profile?.level || 'beginner').charAt(0).toUpperCase() + (profile?.level || 'beginner').slice(1)}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto px-6 py-6">
+        {/* Level Buttons */}
+        <div className="space-y-3">
+          {levelOrder.map((levelKey, index) => {
+            const level = levelsData[levelKey];
+            const isUnlocked = index <= currentLevelIndex;
+            const isCurrent = levelKey === profile?.level;
+            const isExpanded = expandedLevel === levelKey;
+            const levelColor = levelColors[levelKey];
+
+            return (
+              <motion.div
+                key={levelKey}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                {/* Level Button */}
+                <button
+                  onClick={() => handleLevelClick(levelKey, isUnlocked)}
+                  disabled={!isUnlocked}
+                  className={cn(
+                    "w-full rounded-2xl p-5 border transition-all",
+                    isUnlocked 
+                      ? "bg-zinc-800/50 border-zinc-700/50 hover:bg-zinc-800 cursor-pointer" 
+                      : "bg-zinc-900/30 border-zinc-800/30 cursor-not-allowed opacity-50",
+                    isCurrent && "ring-2 ring-offset-2 ring-offset-zinc-950",
+                    isExpanded && isUnlocked && "bg-zinc-800"
+                  )}
+                  style={isCurrent ? { ringColor: levelColor } : {}}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {/* Level Icon */}
+                      <div 
+                        className={cn(
+                          "w-14 h-14 rounded-2xl flex items-center justify-center",
+                          isUnlocked ? "" : "opacity-30"
+                        )}
+                        style={{ backgroundColor: isUnlocked ? `${levelColor}20` : '#27272a' }}
+                      >
+                        <LevelBadge level={levelKey} size="sm" hideLabel />
+                      </div>
+
+                      {/* Level Info */}
+                      <div className="text-left">
+                        <div className="flex items-center gap-2">
+                          <h3 className={cn(
+                            "text-lg font-bold",
+                            isUnlocked ? "text-white" : "text-zinc-600"
+                          )}>
+                            {level.title}
+                          </h3>
+                          {isCurrent && (
+                            <span 
+                              className="text-xs font-bold px-2 py-0.5 rounded-full"
+                              style={{ 
+                                backgroundColor: `${levelColor}20`,
+                                color: levelColor
+                              }}
+                            >
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className={cn(
+                          "text-sm",
+                          isUnlocked ? "text-zinc-400" : "text-zinc-600"
+                        )}>
+                          {level.subtitle}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Status Icon */}
+                    <div>
+                      {!isUnlocked ? (
+                        <Lock className="w-5 h-5 text-zinc-600" />
+                      ) : isExpanded ? (
+                        <ChevronUp className="w-5 h-5 text-zinc-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-zinc-400" />
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Exercises List (Expanded) */}
+                <AnimatePresence>
+                  {isExpanded && isUnlocked && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-3 space-y-2 pl-4">
+                        <p className="text-sm text-zinc-400 mb-3">{level.description}</p>
+                        {level.exercises.map((exercise, exerciseIndex) => (
+                          <motion.div
+                            key={exercise.name}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: exerciseIndex * 0.05 }}
+                            className="bg-zinc-800/50 rounded-xl p-3 border border-zinc-700/30 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                                style={{ backgroundColor: `${levelColor}20` }}
+                              >
+                                <Dumbbell className="w-5 h-5" style={{ color: levelColor }} />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-white">{exercise.name}</h4>
+                                <p className="text-xs text-zinc-500">{exercise.reps}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-1">
+                              {[...Array(3)].map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ 
+                                    backgroundColor: i < exercise.difficulty ? levelColor : '#3f3f46' 
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

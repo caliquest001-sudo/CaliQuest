@@ -1,0 +1,35 @@
+{
+  "name": "LeaderboardEntry",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User ID (unique, indexed)",
+      "unique": true
+    },
+    "username": {
+      "type": "string",
+      "description": "Display name from user profile"
+    },
+    "skill_level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "elite"
+      ],
+      "description": "Current skill level"
+    },
+    "total_xp": {
+      "type": "number",
+      "default": 0,
+      "description": "Cumulative experience points"
+    }
+  },
+  "required": [
+    "user_id",
+    "username",
+    "skill_level"
+  ]
+}

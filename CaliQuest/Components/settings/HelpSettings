@@ -1,0 +1,105 @@
+import React, { useState } from 'react';
+import { ChevronDown, MessageCircle, Mail } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { toast } from 'sonner';
+
+export default function HelpSettings() {
+  const [expandedFaq, setExpandedFaq] = useState(null);
+
+  const faqs = [
+    {
+      question: 'How do I get started?',
+      answer: 'Start by completing the assessment to determine your fitness level. Then check your Daily Tasks for personalized workouts!'
+    },
+    {
+      question: 'How are points calculated?',
+      answer: 'You earn points based on the exercises you complete. Harder exercises give more points. Bonus points are available for park workouts and special challenges!'
+    },
+    {
+      question: 'What are the different levels?',
+      answer: 'There are 4 levels: Beginner, Intermediate, Advanced, and Elite. Progress through levels by earning points and completing workouts.'
+    },
+    {
+      question: 'How do I find workout parks?',
+      answer: 'Go to the Map tab to discover calisthenics parks near you. Parks offer bonus XP multipliers!'
+    },
+    {
+      question: 'Can I change my daily workout?',
+      answer: 'Yes! Click the "New" button on the Daily page to generate a fresh set of 3 exercises.'
+    },
+    {
+      question: 'What if I miss a day?',
+      answer: 'Don\'t worry! A new daily challenge is generated each day. Focus on consistency rather than perfection.'
+    }
+  ];
+
+  const handleContactSupport = () => {
+    toast.success('Support form opened. We\'ll get back to you soon!');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-1">Help & Support</h2>
+        <p className="text-sm text-zinc-400">Get answers to your questions</p>
+      </div>
+
+      {/* FAQs */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-white mb-3">Frequently Asked Questions</h3>
+        {faqs.map((faq, index) => (
+          <div
+            key={index}
+            className="bg-zinc-800/50 border border-zinc-700/50 rounded-2xl overflow-hidden"
+          >
+            <button
+              onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+              className="w-full p-4 flex items-center justify-between touch-manipulation active:bg-zinc-800 transition-colors"
+            >
+              <span className="text-white font-medium text-left">{faq.question}</span>
+              <ChevronDown className={cn(
+                "w-5 h-5 text-zinc-400 transition-transform flex-shrink-0 ml-2",
+                expandedFaq === index && "rotate-180"
+              )} />
+            </button>
+            {expandedFaq === index && (
+              <div className="px-4 pb-4">
+                <p className="text-sm text-zinc-400 leading-relaxed">{faq.answer}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Contact Support */}
+      <div className="pt-4 space-y-2">
+        <Button
+          onClick={handleContactSupport}
+          className="w-full h-12 bg-lime-400 hover:bg-lime-500 text-zinc-900 font-bold"
+        >
+          <MessageCircle className="w-4 h-4 mr-2" />
+          Contact Support
+        </Button>
+
+        <Button
+          onClick={() => toast.info('Opening email client...')}
+          variant="outline"
+          className="w-full h-12 border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-white"
+        >
+          <Mail className="w-4 h-4 mr-2" />
+          Email Us
+        </Button>
+      </div>
+
+      {/* App Info */}
+      <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-4 mt-6">
+        <h3 className="text-white font-semibold mb-2">About CaliQuest</h3>
+        <p className="text-xs text-zinc-400 leading-relaxed mb-2">
+          Your personal calisthenics training companion. Build strength, track progress, and achieve your fitness goals.
+        </p>
+        <p className="text-xs text-zinc-500">Version 1.0.0</p>
+      </div>
+    </div>
+  );
+}

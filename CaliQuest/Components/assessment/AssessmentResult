@@ -1,0 +1,103 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import LevelBadge from '../LevelBadge';
+
+const levelDescriptions = {
+  beginner: {
+    title: "Welcome to Your Journey!",
+    description: "You're at the perfect starting point. We'll build your foundation with basic exercises and gradually increase intensity.",
+    tips: ["Focus on form over reps", "Start with wall push-ups", "Master the basic plank"]
+  },
+  intermediate: {
+    title: "Solid Foundation!",
+    description: "You've got the basics down. Time to challenge yourself with more complex movements and higher volume.",
+    tips: ["Work on full push-up variations", "Start practicing pull-up progressions", "Add explosive movements"]
+  },
+  advanced: {
+    title: "Impressive Skills!",
+    description: "You're ready for serious challenges. Advanced skills and high-intensity training await.",
+    tips: ["Master muscle-ups", "Work on one-arm progressions", "Add weighted calisthenics"]
+  },
+  elite: {
+    title: "You're a Beast!",
+    description: "You've achieved what few can. Time to perfect the impossible and inspire others.",
+    tips: ["Perfect your planche", "Master the iron cross", "Create your own combinations"]
+  }
+};
+
+export default function AssessmentResult({ level, score, onContinue }) {
+  const config = levelDescriptions[level] || levelDescriptions.beginner;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center"
+    >
+      {/* Celebration animation */}
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+        className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-lime-400 to-emerald-500 flex items-center justify-center"
+      >
+        <Sparkles className="w-12 h-12 text-zinc-900" />
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          {config.title}
+        </h1>
+        
+        <div className="flex justify-center mb-6">
+          <LevelBadge level={level} size="lg" />
+        </div>
+        
+        <p className="text-zinc-400 text-lg max-w-md mx-auto mb-8">
+          {config.description}
+        </p>
+
+        {/* Score display */}
+        <div className="inline-flex items-center gap-2 bg-zinc-800/50 px-4 py-2 rounded-full mb-8">
+          <span className="text-zinc-400">Assessment Score:</span>
+          <span className="text-lime-400 font-bold">{score} points</span>
+        </div>
+
+        {/* Tips */}
+        <div className="bg-zinc-800/30 rounded-2xl p-6 mb-8 text-left max-w-md mx-auto border border-zinc-700/30">
+          <h3 className="text-white font-semibold mb-4">Your Next Steps:</h3>
+          <ul className="space-y-3">
+            {config.tips.map((tip, index) => (
+              <motion.li
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 + index * 0.1 }}
+                className="flex items-center gap-3 text-zinc-300"
+              >
+                <div className="w-6 h-6 rounded-full bg-lime-400/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-lime-400 text-xs font-bold">{index + 1}</span>
+                </div>
+                {tip}
+              </motion.li>
+            ))}
+          </ul>
+        </div>
+
+        <Button
+          onClick={onContinue}
+          className="bg-lime-400 hover:bg-lime-500 text-zinc-900 font-bold px-8 py-6 rounded-2xl text-lg"
+        >
+          Start Training
+          <ArrowRight className="ml-2 w-5 h-5" />
+        </Button>
+      </motion.div>
+    </motion.div>
+  );
+}

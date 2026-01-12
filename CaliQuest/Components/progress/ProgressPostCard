@@ -1,0 +1,83 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import LevelBadge from '@/components/LevelBadge';
+import { Play } from 'lucide-react';
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function ProgressPostCard({ post }) {
+  const levelColor = levelColors[post.user_level];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-zinc-900/50 rounded-3xl overflow-hidden border border-zinc-800/50"
+    >
+      {/* Media */}
+      <div className="relative aspect-square bg-zinc-800">
+        {post.media_type === 'image' ? (
+          <img
+            src={post.media_url}
+            alt="Progress"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="relative w-full h-full">
+            <video
+              src={post.media_url}
+              className="w-full h-full object-cover"
+              controls
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                <Play className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-5">
+        {/* User Info */}
+        <div className="flex items-center gap-3 mb-3">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center font-bold"
+            style={{
+              backgroundColor: `${levelColor}20`,
+              color: levelColor
+            }}
+          >
+            {post.user_name[0].toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className="font-bold text-sm"
+                style={{ color: levelColor }}
+              >
+                {post.user_name}
+              </span>
+              <LevelBadge level={post.user_level} size="xs" />
+            </div>
+            <p className="text-zinc-500 text-xs">
+              {format(new Date(post.created_date), 'MMM d, yyyy')}
+            </p>
+          </div>
+        </div>
+
+        {/* Caption */}
+        {post.caption && (
+          <p className="text-white text-sm leading-relaxed">{post.caption}</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}

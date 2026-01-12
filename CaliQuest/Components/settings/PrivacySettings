@@ -1,0 +1,86 @@
+import React from 'react';
+import { AlertTriangle, FileText, Flag, ExternalLink } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { toast } from 'sonner';
+
+export default function PrivacySettings() {
+  const handleReport = () => {
+    toast.success('Report submitted. We will review it shortly.');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-1">Privacy & Safety</h2>
+        <p className="text-sm text-zinc-400">Your safety is our priority</p>
+      </div>
+
+      {/* Safety Disclaimer */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
+        <div className="flex gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-amber-200 font-semibold mb-2">Workout Safety</h3>
+            <p className="text-amber-200/80 text-sm leading-relaxed mb-3">
+              Always consult with a healthcare professional before starting any new exercise program. 
+              Listen to your body and stop if you experience pain or discomfort.
+            </p>
+            <ul className="text-xs text-amber-200/70 space-y-1">
+              <li>• Warm up properly before each workout</li>
+              <li>• Use proper form to prevent injuries</li>
+              <li>• Stay hydrated during exercise</li>
+              <li>• Know your limits and progress gradually</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Legal Links */}
+      <div className="space-y-2">
+        <a
+          href="#"
+          className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-4 hover:bg-zinc-800 transition-all touch-manipulation active:scale-[0.98] flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-400/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="text-left">
+              <p className="text-white font-medium">Terms of Service</p>
+              <p className="text-xs text-zinc-400">Read our terms and conditions</p>
+            </div>
+          </div>
+          <ExternalLink className="w-4 h-4 text-zinc-500" />
+        </a>
+
+        <a
+          href="#"
+          className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-4 hover:bg-zinc-800 transition-all touch-manipulation active:scale-[0.98] flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-400/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-purple-400" />
+            </div>
+            <div className="text-left">
+              <p className="text-white font-medium">Privacy Policy</p>
+              <p className="text-xs text-zinc-400">How we protect your data</p>
+            </div>
+          </div>
+          <ExternalLink className="w-4 h-4 text-zinc-500" />
+        </a>
+      </div>
+
+      {/* Report */}
+      <div className="pt-4">
+        <Button
+          onClick={handleReport}
+          variant="outline"
+          className="w-full h-12 border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-white"
+        >
+          <Flag className="w-4 h-4 mr-2" />
+          Report User or Content
+        </Button>
+      </div>
+    </div>
+  );
+}

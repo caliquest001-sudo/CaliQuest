@@ -1,0 +1,38 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User who sent the message"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Display name of the user"
+    },
+    "user_level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "elite"
+      ],
+      "description": "User's skill level at time of message"
+    },
+    "user_profile_picture": {
+      "type": "string",
+      "description": "User's profile picture URL"
+    },
+    "message": {
+      "type": "string",
+      "description": "The chat message content"
+    }
+  },
+  "required": [
+    "user_id",
+    "user_name",
+    "user_level",
+    "message"
+  ]
+}

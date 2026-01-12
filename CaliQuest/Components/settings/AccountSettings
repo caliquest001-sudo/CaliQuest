@@ -1,0 +1,149 @@
+import React, { useState } from 'react';
+import { Mail, Calendar, Edit2, Loader2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+
+export default function AccountSettings({ user }) {
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleChangeEmail = async () => {
+    if (!newEmail || !password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    
+    // Simulate email change request
+    setTimeout(() => {
+      toast.success('Verification email sent to ' + newEmail);
+      setShowEmailDialog(false);
+      setNewEmail('');
+      setPassword('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-1">Account Information</h2>
+        <p className="text-sm text-zinc-400">Manage your account details</p>
+      </div>
+
+      {/* Email */}
+      <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-xl bg-lime-400/10 flex items-center justify-center flex-shrink-0">
+              <Mail className="w-5 h-5 text-lime-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-zinc-400">Email Address</p>
+              <p className="text-white font-medium truncate">{user?.email}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowEmailDialog(true)}
+            className="flex-shrink-0 touch-manipulation"
+          >
+            <Edit2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Account Created */}
+      <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-400/10 flex items-center justify-center flex-shrink-0">
+            <Calendar className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-zinc-400">Member Since</p>
+            <p className="text-white font-medium">
+              {user?.created_date ? format(new Date(user.created_date), 'MMMM d, yyyy') : 'N/A'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Change Email Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="bg-zinc-900 border-zinc-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Change Email Address</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Enter your new email and confirm with your password
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="new-email" className="text-zinc-400">New Email Address</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="mt-2 bg-zinc-800 border-zinc-700 text-white h-12"
+                placeholder="new.email@example.com"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="password" className="text-zinc-400">Current Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-2 bg-zinc-800 border-zinc-700 text-white h-12"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+              <p className="text-xs text-amber-200">
+                A verification email will be sent to your new address. Your email won't change until you verify it.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowEmailDialog(false)}
+                className="flex-1 h-12 text-zinc-400"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleChangeEmail}
+                disabled={loading}
+                className="flex-1 h-12 bg-lime-400 hover:bg-lime-500 text-zinc-900 font-bold"
+              >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Send Verification
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

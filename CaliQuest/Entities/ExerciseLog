@@ -1,0 +1,23 @@
+{
+  "name": "ExerciseLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User who logged the exercises"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the workout in YYYY-MM-DD format"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about the workout for this day"
+    }
+  },
+  "required": [
+    "user_id",
+    "date"
+  ]
+}

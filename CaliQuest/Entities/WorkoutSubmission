@@ -1,0 +1,59 @@
+{
+  "name": "WorkoutSubmission",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User who submitted the workout"
+    },
+    "daily_task_id": {
+      "type": "string",
+      "description": "Reference to daily task"
+    },
+    "exercise_name": {
+      "type": "string",
+      "description": "Name of exercise performed"
+    },
+    "exercise_id": {
+      "type": "string",
+      "description": "Reference to exercise"
+    },
+    "proof_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of uploaded photos/videos as proof"
+    },
+    "notes": {
+      "type": "string",
+      "description": "User notes about the workout"
+    },
+    "points_earned": {
+      "type": "number",
+      "description": "Points earned for this submission"
+    },
+    "location": {
+      "type": "string",
+      "description": "Where the workout was performed"
+    },
+    "park_id": {
+      "type": "string",
+      "description": "Reference to park if applicable"
+    },
+    "park_bonus_applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether park bonus was applied"
+    },
+    "completed_reps": {
+      "type": "string",
+      "description": "Actual reps or duration completed"
+    }
+  },
+  "required": [
+    "user_id",
+    "exercise_name",
+    "points_earned"
+  ]
+}

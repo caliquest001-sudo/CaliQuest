@@ -1,0 +1,72 @@
+{
+  "name": "DailyTask",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date for this daily task"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User this task is assigned to"
+    },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "string"
+          },
+          "exercise_name": {
+            "type": "string"
+          },
+          "reps_or_duration": {
+            "type": "string"
+          },
+          "points": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes about this exercise"
+          }
+        }
+      },
+      "description": "List of exercises for today"
+    },
+    "bonus_challenge": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "bonus_points": {
+          "type": "number"
+        }
+      },
+      "description": "Optional bonus challenge"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether task is completed"
+    },
+    "completion_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the task was completed"
+    },
+    "total_points_earned": {
+      "type": "number",
+      "default": 0,
+      "description": "Total points earned from this task"
+    }
+  },
+  "required": [
+    "date",
+    "user_id",
+    "exercises"
+  ]
+}

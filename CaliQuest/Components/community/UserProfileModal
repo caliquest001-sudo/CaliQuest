@@ -1,0 +1,181 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import { Loader2, Trophy, Calendar, Award } from 'lucide-react';
+import { format } from 'date-fns';
+import LevelBadge from '@/components/LevelBadge';
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function UserProfileModal({ userId, isOpen, onClose }) {
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['userProfile', userId],
+    queryFn: async () => {
+      const profiles = await base44.entities.UserProfile.filter({ user_id: userId });
+      return profiles[0] || null;
+    },
+    enabled: isOpen && !!userId
+  });
+
+  const { data: leaderboardEntry, isLoading: leaderboardLoading } = useQuery({
+    queryKey: ['userLeaderboard', userId, profile?.level],
+    queryFn: async () => {
+      if (!profile?.level) return null;
+      
+      // Get all entries for the user's skill level
+      const entries = await base44.entities.LeaderboardEntry.filter({ 
+        skill_level: profile.level 
+      });
+      
+      // Sort by XP and find the user's rank
+      const sorted = entries.sort((a, b) => (b.total_xp || 0) - (a.total_xp || 0));
+      const userEntry = sorted.find(e => e.user_id === userId);
+      
+      if (!userEntry) return null;
+      
+      return {
+        ...userEntry,
+        rank: sorted.findIndex(e => e.user_id === userId) + 1,
+        totalInLevel: sorted.length
+      };
+    },
+    enabled: isOpen && !!userId && !!profile?.level
+  });
+
+  const { data: achievements = [], isLoading: achievementsLoading } = useQuery({
+    queryKey: ['userAchievements', userId],
+    queryFn: async () => {
+      return await base44.entities.Achievement.filter({ user_id: userId });
+    },
+    enabled: isOpen && !!userId
+  });
+
+  const isLoading = profileLoading || leaderboardLoading || achievementsLoading;
+  const levelColor = levelColors[profile?.level || 'beginner'];
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-md max-h-[90vh] overflow-y-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: levelColor }} />
+          </div>
+        ) : profile ? (
+          <div className="space-y-6">
+            {/* Profile Header */}
+            <div className="text-center">
+              {profile.profile_picture ? (
+                <img 
+                  src={profile.profile_picture}
+                  alt={profile.display_name}
+                  className="w-24 h-24 rounded-full mx-auto mb-4 object-cover border-4"
+                  style={{ borderColor: levelColor }}
+                />
+              ) : (
+                <div 
+                  className="w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-bold"
+                  style={{ 
+                    backgroundColor: `${levelColor}20`,
+                    color: levelColor
+                  }}
+                >
+                  {profile.display_name?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+              
+              <h2 className="text-2xl font-bold mb-2">{profile.display_name}</h2>
+              <div className="flex justify-center">
+                <LevelBadge level={profile.level} size="lg" />
+              </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div 
+                className="rounded-2xl p-4 text-center"
+                style={{ backgroundColor: `${levelColor}10` }}
+              >
+                <div className="flex justify-center mb-2">
+                  <Trophy className="w-5 h-5" style={{ color: levelColor }} />
+                </div>
+                <p className="text-2xl font-bold">{leaderboardEntry?.rank || '-'}</p>
+                <p className="text-zinc-400 text-xs">Rank</p>
+              </div>
+
+              <div 
+                className="rounded-2xl p-4 text-center"
+                style={{ backgroundColor: `${levelColor}10` }}
+              >
+                <p className="text-2xl font-bold">{profile.points || 0}</p>
+                <p className="text-zinc-400 text-xs">Total XP</p>
+              </div>
+
+              <div className="col-span-2 rounded-2xl p-4 bg-zinc-800/50 flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-zinc-400" />
+                <div>
+                  <p className="text-xs text-zinc-400">Member since</p>
+                  <p className="font-medium">
+                    {format(new Date(profile.created_date), 'MMMM yyyy')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Achievements Section */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Award className="w-5 h-5" style={{ color: levelColor }} />
+                <h3 className="font-bold text-lg">Achievements</h3>
+              </div>
+
+              {achievements.length === 0 ? (
+                <div className="text-center py-8 bg-zinc-800/50 rounded-2xl">
+                  <Award className="w-12 h-12 mx-auto mb-2 text-zinc-600" />
+                  <p className="text-zinc-500">No achievements yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {achievements.map((achievement) => (
+                    <motion.div
+                      key={achievement.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-zinc-800/50 rounded-xl p-3 flex items-start gap-3"
+                    >
+                      <div 
+                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-xl"
+                        style={{ backgroundColor: `${levelColor}20` }}
+                      >
+                        {achievement.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm">{achievement.title}</p>
+                        <p className="text-xs text-zinc-400">{achievement.description}</p>
+                        {achievement.earned_at && (
+                          <p className="text-xs text-zinc-500 mt-1">
+                            {format(new Date(achievement.earned_at), 'MMM d, yyyy')}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-zinc-400">Profile not found</p>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

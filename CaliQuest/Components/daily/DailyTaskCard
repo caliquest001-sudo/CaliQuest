@@ -1,0 +1,144 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Calendar, Trophy, Flame, CheckCircle2, Clock } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function DailyTaskCard({ task, onStart, index = 0, userLevel = 'beginner' }) {
+  const totalPoints = task.exercises?.reduce((sum, ex) => sum + (ex.points || 0), 0) || 0;
+  const bonusPoints = task.bonus_challenge?.bonus_points || 0;
+  const isCompleted = task.completed;
+  const iconColor = levelColors[userLevel];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className={cn(
+        "relative overflow-hidden rounded-3xl p-6 border",
+        isCompleted 
+          ? "bg-emerald-500/10 border-emerald-500/30" 
+          : "bg-gradient-to-br from-zinc-800 to-zinc-900 border-zinc-700"
+      )}
+    >
+      {/* Decorative gradient */}
+      {!isCompleted && (
+        <div className="absolute -top-20 -right-20 w-40 h-40 bg-lime-400/10 rounded-full blur-3xl" />
+      )}
+
+      <div className="relative">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center",
+              isCompleted ? "bg-emerald-500/20" : "bg-lime-400/20"
+            )}>
+              {isCompleted ? (
+                <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+              ) : (
+                <Calendar className="w-6 h-6" style={{ color: iconColor }} />
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">
+                {isCompleted ? "Completed! 🎉" : "Today's Tasks"}
+              </h3>
+              <p className="text-sm text-zinc-400">
+                {task.exercises?.length || 0} exercises
+              </p>
+            </div>
+          </div>
+
+          {isCompleted && (
+            <div className="text-right">
+              <div className="text-2xl font-bold text-emerald-400">
+                {task.total_points_earned || totalPoints}
+              </div>
+              <div className="text-xs text-zinc-500">XP earned</div>
+            </div>
+          )}
+        </div>
+
+        {/* Exercises list preview */}
+        <div className="mb-4">
+          <div className="space-y-2">
+            {task.exercises?.slice(0, 3).map((exercise, i) => (
+              <div 
+                key={i}
+                className="flex items-center justify-between text-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold",
+                    isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-700 text-zinc-400"
+                  )}>
+                    {i + 1}
+                  </div>
+                  <span className="text-zinc-300">{exercise.exercise_name}</span>
+                </div>
+                <span className="text-zinc-500">{exercise.reps_or_duration}</span>
+              </div>
+            ))}
+            {task.exercises?.length > 3 && (
+              <div className="text-xs text-zinc-500 pl-8">
+                +{task.exercises.length - 3} more exercises
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bonus challenge */}
+        {task.bonus_challenge && !isCompleted && (
+          <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <div className="flex items-center gap-2 mb-1">
+              <Flame className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-amber-400 uppercase">Bonus Challenge</span>
+            </div>
+            <p className="text-sm text-zinc-300">{task.bonus_challenge.description}</p>
+            <p className="text-xs text-amber-400 mt-1">+{bonusPoints} XP</p>
+          </div>
+        )}
+
+        {/* Points & Action */}
+        <div className="flex items-center justify-between pt-4 border-t border-zinc-700/50">
+          {!isCompleted ? (
+            <>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-lime-400" />
+                  <span className="text-white font-bold">{totalPoints} XP</span>
+                </div>
+                {bonusPoints > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-amber-400" />
+                    <span className="text-amber-400 font-bold">+{bonusPoints}</span>
+                  </div>
+                )}
+              </div>
+              <Button
+                onClick={onStart}
+                className="bg-lime-400 hover:bg-lime-500 text-zinc-900 font-bold"
+              >
+                Start Workout
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="font-medium">Completed</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}

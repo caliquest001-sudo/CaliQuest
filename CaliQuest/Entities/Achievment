@@ -1,0 +1,33 @@
+{
+  "name": "Achievement",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User who earned this achievement"
+    },
+    "title": {
+      "type": "string",
+      "description": "Achievement title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Achievement description"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Icon name for the achievement"
+    },
+    "earned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the achievement was earned"
+    }
+  },
+  "required": [
+    "user_id",
+    "title",
+    "description",
+    "icon"
+  ]
+}

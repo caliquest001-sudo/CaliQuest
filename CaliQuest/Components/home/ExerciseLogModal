@@ -1,0 +1,152 @@
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Save, Dumbbell, CheckCircle2, Edit2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { base44 } from '@/api/base44Client';
+import { useState as useReactState } from 'react';
+
+export default function ExerciseLogModal({ 
+  date, 
+  isOpen, 
+  onClose, 
+  dailyTasks = [],
+  exerciseLog, 
+  onSave,
+  levelColor 
+}) {
+  const [notes, setNotes] = useState('');
+  const [exerciseNotes, setExerciseNotes] = useReactState({});
+  const [editingExerciseId, setEditingExerciseId] = useReactState(null);
+
+  useEffect(() => {
+    if (exerciseLog?.notes) {
+      setNotes(exerciseLog.notes);
+    } else {
+      setNotes('');
+    }
+    
+    // Initialize exercise notes from DailyTask
+    if (dailyTasks.length > 0) {
+      const notesMap = {};
+      dailyTasks.forEach(task => {
+        task.exercises?.forEach(exercise => {
+          if (exercise.notes) {
+            notesMap[exercise.exercise_id] = exercise.notes;
+          }
+        });
+      });
+      setExerciseNotes(notesMap);
+    }
+  }, [exerciseLog, date, dailyTasks]);
+
+  const handleSave = async () => {
+    onSave(notes);
+    
+    // Save exercise notes back to DailyTask
+    for (const task of dailyTasks) {
+      const updatedExercises = task.exercises.map(ex => ({
+        ...ex,
+        notes: exerciseNotes[ex.exercise_id] || ex.notes
+      }));
+      
+      await base44.entities.DailyTask.update(task.id, {
+        exercises: updatedExercises
+      });
+    }
+  };
+
+  if (!date) return null;
+
+  const hasExercises = dailyTasks && dailyTasks.length > 0;
+  const allExercises = dailyTasks.flatMap(task => task.exercises || []);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">
+            Workout Log - {format(date, 'MMMM d, yyyy')}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-4">
+          {/* Exercises Section */}
+          {hasExercises && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Dumbbell className="w-4 h-4" style={{ color: levelColor }} />
+                <h3 className="text-sm font-bold text-zinc-300">Exercises</h3>
+              </div>
+              <div className="space-y-3 bg-zinc-800/50 rounded-lg p-3">
+                {allExercises.map((exercise) => (
+                  <div key={exercise.exercise_id} className="border-b border-zinc-700/50 last:border-0 pb-3 last:pb-0">
+                    <div className="flex items-start gap-3 py-2">
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: levelColor }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white">{exercise.exercise_name}</p>
+                        <p className="text-xs text-zinc-400">
+                          {exercise.reps_or_duration} • +{exercise.points} XP
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setEditingExerciseId(editingExerciseId === exercise.exercise_id ? null : exercise.exercise_id)}
+                        className="p-1 text-zinc-400 hover:text-white transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {editingExerciseId === exercise.exercise_id && (
+                      <textarea
+                        value={exerciseNotes[exercise.exercise_id] || exercise.notes || ''}
+                        onChange={(e) => setExerciseNotes(prev => ({
+                          ...prev,
+                          [exercise.exercise_id]: e.target.value
+                        }))}
+                        placeholder="Add notes for this exercise..."
+                        className="w-full mt-2 p-2 bg-zinc-700 border border-zinc-600 rounded text-xs text-white placeholder-zinc-500"
+                        rows="2"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes Section */}
+          <div>
+            <label className="text-sm text-zinc-400 mb-2 block">
+              {hasExercises ? 'Workout Notes' : 'Add notes about your workout for this day'}
+            </label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., Completed 3x10 push-ups, felt strong today, increased reps on pull-ups..."
+              className="bg-zinc-800 border-zinc-700 text-white min-h-[150px]"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="text-zinc-400 hover:text-white"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            className="text-zinc-900 font-bold"
+            style={{ backgroundColor: levelColor }}
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save Notes
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

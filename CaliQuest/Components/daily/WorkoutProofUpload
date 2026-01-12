@@ -1,0 +1,239 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Upload, X, Image, Video, Loader2, AlertCircle, MapPin } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { base44 } from '@/api/base44Client';
+
+export default function WorkoutProofUpload({ 
+  exercise, 
+  open, 
+  onClose, 
+  onSubmit,
+  taskId 
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [proofUrls, setProofUrls] = useState([]);
+  const [notes, setNotes] = useState('');
+  const [location, setLocation] = useState('');
+  const [completedReps, setCompletedReps] = useState('');
+  const [agreedToSafety, setAgreedToSafety] = useState(false);
+
+  // Reset form state when exercise changes or modal opens
+  React.useEffect(() => {
+    if (open && exercise) {
+      setProofUrls([]);
+      setNotes('');
+      setLocation('');
+      setCompletedReps('');
+      setAgreedToSafety(false);
+      setUploading(false);
+    }
+  }, [exercise?.exercise_id, open]);
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const uploadPromises = files.map(file => 
+        base44.integrations.Core.UploadFile({ file })
+      );
+      const results = await Promise.all(uploadPromises);
+      const urls = results.map(r => r.file_url);
+      setProofUrls(prev => [...prev, ...urls]);
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
+    setUploading(false);
+  };
+
+  const removeFile = (index) => {
+    setProofUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = () => {
+    if (!agreedToSafety) {
+      alert('Please agree to the safety disclaimer');
+      return;
+    }
+
+    onSubmit({
+      exercise_id: exercise.exercise_id,
+      exercise_name: exercise.exercise_name,
+      proof_urls: proofUrls,
+      notes,
+      location,
+      completed_reps: completedReps || exercise.reps_or_duration,
+      points_earned: exercise.points,
+      daily_task_id: taskId,
+      exerciseNotes: notes
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-zinc-900 border-zinc-700 max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-white">Submit Your Workout</DialogTitle>
+          <p className="text-zinc-400 text-sm">{exercise?.exercise_name}</p>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-4">
+          {/* Safety Disclaimer */}
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+            <div className="flex gap-2 mb-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-200 text-sm font-medium mb-1">Safety Disclaimer</p>
+                <p className="text-red-200/80 text-xs leading-relaxed">
+                  By uploading workout proof, you confirm that you performed these exercises safely, 
+                  at your own risk, and without injury. Always consult a healthcare professional before 
+                  starting any exercise program. Stop immediately if you experience pain or discomfort.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox 
+                id="safety"
+                checked={agreedToSafety}
+                onCheckedChange={setAgreedToSafety}
+                className="border-red-400"
+              />
+              <label htmlFor="safety" className="text-red-200 text-xs cursor-pointer">
+                I understand and agree to the safety disclaimer
+              </label>
+            </div>
+          </div>
+
+          {/* Upload area */}
+          <div>
+            <Label className="text-zinc-400 text-sm mb-2 block">Upload Proof (Photos/Videos)</Label>
+            <label className="block w-full border-2 border-dashed border-zinc-700 rounded-xl p-6 text-center cursor-pointer hover:border-zinc-600 transition-colors">
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={uploading}
+              />
+              {uploading ? (
+                <Loader2 className="w-8 h-8 text-lime-400 animate-spin mx-auto mb-2" />
+              ) : (
+                <Upload className="w-8 h-8 text-zinc-500 mx-auto mb-2" />
+              )}
+              <p className="text-zinc-400 text-sm">
+                {uploading ? 'Uploading...' : 'Click to upload photos or videos'}
+              </p>
+              <p className="text-zinc-600 text-xs mt-1">JPG, PNG, MP4 (max 50MB each)</p>
+            </label>
+          </div>
+
+          {/* Uploaded files preview */}
+          {proofUrls.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {proofUrls.map((url, i) => (
+                <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-zinc-800 group">
+                  {url.includes('.mp4') || url.includes('video') ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Video className="w-8 h-8 text-zinc-500" />
+                    </div>
+                  ) : (
+                    <img src={url} alt={`Proof ${i + 1}`} className="w-full h-full object-cover" />
+                  )}
+                  <button
+                    onClick={() => removeFile(i)}
+                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Completed reps/duration */}
+          <div>
+            <Label htmlFor="reps" className="text-zinc-400 text-sm">
+              Reps/Duration Completed
+            </Label>
+            <Input
+              id="reps"
+              value={completedReps}
+              onChange={(e) => setCompletedReps(e.target.value)}
+              placeholder={exercise?.reps_or_duration || '3x12'}
+              className="mt-1 bg-zinc-800 border-zinc-700 text-white"
+            />
+          </div>
+
+          {/* Location */}
+          <div>
+            <Label htmlFor="location" className="text-zinc-400 text-sm flex items-center gap-2">
+              <MapPin className="w-3.5 h-3.5" />
+              Location (Optional)
+            </Label>
+            <Input
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g., Central Park, Home Gym"
+              className="mt-1 bg-zinc-800 border-zinc-700 text-white"
+            />
+          </div>
+
+          {/* Notes */}
+          <div>
+            <Label htmlFor="notes" className="text-zinc-400 text-sm">
+              Notes (Optional)
+            </Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="How did it feel? Any challenges?"
+              rows={3}
+              className="mt-1 bg-zinc-800 border-zinc-700 text-white"
+            />
+          </div>
+
+          {/* Points preview */}
+          <div className="bg-lime-400/10 border border-lime-400/30 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-300">Points to earn:</span>
+              <span className="text-2xl font-bold text-lime-400">+{exercise?.points || 0} XP</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!agreedToSafety}
+              className="flex-1 bg-lime-400 hover:bg-lime-500 text-zinc-900 font-bold disabled:opacity-50"
+            >
+              Submit ({exercise?.points || 0} XP)
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

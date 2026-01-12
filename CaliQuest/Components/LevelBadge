@@ -1,0 +1,72 @@
+import React from 'react';
+import { cn } from "@/lib/utils";
+import { Flame, Star, Trophy, Crown } from 'lucide-react';
+
+const levelConfig = {
+  beginner: {
+    label: 'Beginner',
+    icon: Flame,
+    gradient: 'from-[#FCF1C3] to-[#FCF1C3]',
+    bg: 'bg-[#FCF1C3]/10',
+    border: 'border-[#FCF1C3]/30',
+    text: 'text-[#FCF1C3]',
+    color: '#FCF1C3'
+  },
+  intermediate: {
+    label: 'Intermediate',
+    icon: Star,
+    gradient: 'from-[#FC0D0F] to-[#FC0D0F]',
+    bg: 'bg-[#FC0D0F]/10',
+    border: 'border-[#FC0D0F]/30',
+    text: 'text-[#FC0D0F]',
+    color: '#FC0D0F'
+  },
+  advanced: {
+    label: 'Advanced',
+    icon: Trophy,
+    gradient: 'from-[#FF1B4C] to-[#FF1B4C]',
+    bg: 'bg-[#FF1B4C]/10',
+    border: 'border-[#FF1B4C]/30',
+    text: 'text-[#FF1B4C]',
+    color: '#FF1B4C'
+  },
+  elite: {
+    label: 'Elite',
+    icon: Crown,
+    gradient: 'from-gray-300 to-gray-400',
+    bg: 'bg-gray-300/10',
+    border: 'border-gray-300/30',
+    text: 'text-gray-300',
+    color: '#C0C0C0'
+  }
+};
+
+export default function LevelBadge({ level = 'beginner', size = 'md', showLabel = true }) {
+  const config = levelConfig[level] || levelConfig.beginner;
+  const Icon = config.icon;
+  
+  const sizeClasses = {
+    sm: 'px-2 py-1 text-xs gap-1',
+    md: 'px-3 py-1.5 text-sm gap-1.5',
+    lg: 'px-4 py-2 text-base gap-2'
+  };
+  
+  const iconSizes = {
+    sm: 'w-3 h-3',
+    md: 'w-4 h-4',
+    lg: 'w-5 h-5'
+  };
+
+  return (
+    <div className={cn(
+      "inline-flex items-center rounded-full font-medium border backdrop-blur-sm",
+      config.bg,
+      config.border,
+      config.text,
+      sizeClasses[size]
+    )}>
+      <Icon className={iconSizes[size]} />
+      {showLabel && <span>{config.label}</span>}
+    </div>
+  );
+}

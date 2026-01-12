@@ -1,0 +1,391 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  Loader2, Camera, Edit2, LogOut, ChevronRight, 
+  Trophy, Target, Flame, Settings, HelpCircle, Image as ImageIcon
+} from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import LevelBadge from '@/components/LevelBadge';
+
+const levelExpRequirements = {
+  beginner: 500,
+  intermediate: 1500,
+  advanced: 3000,
+  elite: 5000
+};
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function Profile() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  const { data: user, isLoading: userLoading } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => base44.auth.me()
+  });
+
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['userProfile', user?.email],
+    queryFn: async () => {
+      const profiles = await base44.entities.UserProfile.filter({ user_id: user.email });
+      return profiles[0] || null;
+    },
+    enabled: !!user?.email
+  });
+
+  const { data: banners } = useQuery({
+    queryKey: ['banners', user?.email],
+    queryFn: async () => {
+      const banners = await base44.entities.Banner.filter({ user_id: user.email });
+      return banners;
+    },
+    enabled: !!user?.email
+  });
+
+  const activeBanner = banners?.find(b => b.is_active);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data) => {
+      if (profile) {
+        return base44.entities.UserProfile.update(profile.id, data);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['userProfile']);
+      setEditDialogOpen(false);
+    }
+  });
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      await updateProfileMutation.mutateAsync({ profile_picture: file_url });
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
+    setUploading(false);
+  };
+
+  const handleBannerUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      // Deactivate all existing banners
+      if (banners?.length > 0) {
+        for (const banner of banners) {
+          if (banner.is_active) {
+            await base44.entities.Banner.update(banner.id, { is_active: false });
+          }
+        }
+      }
+      
+      // Create new banner
+      await base44.entities.Banner.create({
+        user_id: user.email,
+        banner_url: file_url,
+        is_active: true,
+        name: 'Profile Banner'
+      });
+      
+      queryClient.invalidateQueries(['banners']);
+      setBannerDialogOpen(false);
+    } catch (error) {
+      console.error('Banner upload failed:', error);
+    }
+    setUploading(false);
+  };
+
+  const handleUpdateName = () => {
+    if (editName.trim()) {
+      updateProfileMutation.mutate({ display_name: editName.trim() });
+    }
+  };
+
+  const handleLogout = () => {
+    base44.auth.logout();
+  };
+
+  const isLoading = userLoading || profileLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: levelColor || '#FCF1C3' }} />
+      </div>
+    );
+  }
+
+  const stats = profile?.stats || { workouts_completed: 0, total_exercises: 0, streak_days: 0 };
+  const currentLevel = profile?.level || 'beginner';
+  const currentExp = profile?.points || 0;
+  const maxExp = levelExpRequirements[currentLevel];
+  const expProgress = (currentExp / maxExp) * 100;
+  const levelColor = levelColors[currentLevel];
+
+  const menuItems = [
+    { icon: Settings, label: 'Settings', onClick: () => navigate(createPageUrl('Settings')) },
+    { icon: HelpCircle, label: 'Help & Support', onClick: () => navigate(createPageUrl('Settings')) },
+    { icon: LogOut, label: 'Logout', onClick: handleLogout, danger: true }
+  ];
+
+  return (
+    <div className="min-h-screen bg-black pb-24">
+      {/* Banner Section */}
+      <div className="relative h-48 bg-gradient-to-b from-zinc-800 to-zinc-900 overflow-hidden">
+        {activeBanner?.banner_url ? (
+          <img 
+            src={activeBanner.banner_url} 
+            alt="Banner" 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-lime-400/20 to-emerald-500/20" />
+        )}
+        
+        <button
+          onClick={() => setBannerDialogOpen(true)}
+          className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-zinc-900/80 backdrop-blur-sm border border-zinc-700 flex items-center justify-center hover:bg-zinc-800 transition-colors"
+        >
+          <ImageIcon className="w-5 h-5 text-zinc-400" />
+        </button>
+      </div>
+
+      <div className="relative max-w-2xl mx-auto px-6 -mt-16">
+        {/* Profile Picture */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-4"
+        >
+          <div className="relative inline-block mb-4">
+            <div className="w-32 h-32 rounded-3xl p-1" style={{ background: `linear-gradient(135deg, ${levelColor}, ${levelColor}dd)` }}>
+              <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-950">
+                {profile?.profile_picture ? (
+                  <img 
+                    src={profile.profile_picture} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold" style={{ color: levelColor }}>
+                    {(profile?.display_name || user?.full_name || 'U')[0].toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <label className="absolute -bottom-2 -right-2 w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center cursor-pointer hover:bg-zinc-700 transition-colors">
+              {uploading ? (
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: levelColor }} />
+              ) : (
+                <Camera className="w-5 h-5 text-zinc-400" />
+              )}
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleImageUpload}
+                disabled={uploading}
+              />
+            </label>
+          </div>
+
+          {/* Name & Level */}
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <h1 className="text-2xl font-bold text-white">
+              {profile?.display_name || user?.full_name || 'Athlete'}
+            </h1>
+            <button 
+              onClick={() => {
+                setEditName(profile?.display_name || user?.full_name || '');
+                setEditDialogOpen(true);
+              }}
+              className="p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+            >
+              <Edit2 className="w-4 h-4 text-zinc-500" />
+            </button>
+          </div>
+          
+          <p className="text-zinc-400 mb-3">{user?.email}</p>
+          
+          <LevelBadge level={currentLevel} size="md" />
+        </motion.div>
+
+        {/* EXP Progress Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-zinc-400 text-sm">Experience</span>
+            <span className="text-white text-sm font-bold">{currentExp} / {maxExp} XP</span>
+          </div>
+          <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+            <div 
+              className="h-full transition-all duration-500"
+              style={{ 
+                width: `${Math.min(expProgress, 100)}%`,
+                background: `linear-gradient(90deg, ${levelColor}, ${levelColor}dd)`
+              }}
+            />
+          </div>
+        </motion.div>
+
+        {/* Stats Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="grid grid-cols-3 gap-4 mb-8"
+        >
+          <div className="bg-zinc-800/50 rounded-2xl p-4 text-center border border-zinc-700/30">
+            <div className="w-12 h-12 mx-auto mb-2 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${levelColor}20` }}>
+              <Target className="w-6 h-6" style={{ color: levelColor }} />
+            </div>
+            <p className="text-2xl font-bold text-white">{stats.workouts_completed}</p>
+            <p className="text-xs text-zinc-500">Workouts</p>
+          </div>
+          
+          <div className="bg-zinc-800/50 rounded-2xl p-4 text-center border border-zinc-700/30">
+            <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-amber-400/10 flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-amber-400" />
+            </div>
+            <p className="text-2xl font-bold text-white">{profile?.points || 0}</p>
+            <p className="text-xs text-zinc-500">Total XP</p>
+          </div>
+          
+          <div className="bg-zinc-800/50 rounded-2xl p-4 text-center border border-zinc-700/30">
+            <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-orange-400/10 flex items-center justify-center">
+              <Flame className="w-6 h-6 text-orange-400" />
+            </div>
+            <p className="text-2xl font-bold text-white">{stats.streak_days}</p>
+            <p className="text-xs text-zinc-500">Day Streak</p>
+          </div>
+        </motion.div>
+
+        {/* Menu */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-zinc-800/50 rounded-2xl border border-zinc-700/30 overflow-hidden"
+        >
+          {menuItems.map((item, index) => (
+            <button
+              key={item.label}
+              onClick={item.onClick}
+              className={`w-full flex items-center justify-between p-4 hover:bg-zinc-800 transition-colors ${
+                index !== menuItems.length - 1 ? 'border-b border-zinc-700/30' : ''
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon className={`w-5 h-5 ${item.danger ? 'text-red-400' : 'text-zinc-400'}`} />
+                <span className={item.danger ? 'text-red-400' : 'text-white'}>{item.label}</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-zinc-600" />
+            </button>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* Edit Name Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="bg-zinc-900 border-zinc-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Display Name</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="name" className="text-zinc-400">Display Name</Label>
+              <Input
+                id="name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="mt-2 bg-zinc-800 border-zinc-700 text-white"
+                placeholder="Enter your name"
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => setEditDialogOpen(false)}
+                className="text-zinc-400"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateName}
+                disabled={updateProfileMutation.isPending}
+                className="text-zinc-900"
+                style={{ backgroundColor: levelColor }}
+              >
+                {updateProfileMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin text-zinc-900" />}
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Banner Upload Dialog */}
+      <Dialog open={bannerDialogOpen} onOpenChange={setBannerDialogOpen}>
+        <DialogContent className="bg-zinc-900 border-zinc-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Upload Banner</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="banner" className="text-zinc-400">Choose Banner Image</Label>
+              <Input
+                id="banner"
+                type="file"
+                accept="image/*"
+                onChange={handleBannerUpload}
+                className="mt-2 bg-zinc-800 border-zinc-700 text-white"
+                disabled={uploading}
+              />
+            </div>
+            {uploading && (
+              <div className="flex items-center gap-2 text-zinc-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Uploading...</span>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

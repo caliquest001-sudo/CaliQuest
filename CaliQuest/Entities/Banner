@@ -1,0 +1,27 @@
+{
+  "name": "Banner",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User this banner belongs to"
+    },
+    "banner_url": {
+      "type": "string",
+      "description": "URL of the banner image"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this banner is currently active"
+    },
+    "name": {
+      "type": "string",
+      "description": "Banner name for identification"
+    }
+  },
+  "required": [
+    "user_id",
+    "banner_url"
+  ]
+}

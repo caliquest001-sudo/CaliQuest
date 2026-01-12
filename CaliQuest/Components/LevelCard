@@ -1,0 +1,110 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Lock, Check, ChevronRight } from 'lucide-react';
+import { cn } from "@/lib/utils";
+
+const levelData = {
+  beginner: {
+    title: 'Lower body',
+    subtitle: 'Leg strength fundamentals',
+    description: 'Build foundational leg power',
+    color: 'from-purple-500 to-purple-600',
+    bgColor: 'bg-purple-500/10',
+    textColor: 'text-purple-400',
+    exercises: ['Squats', 'Lunges', 'Calf Raises', 'Glute Bridge'],
+    requiredPoints: 0
+  },
+  intermediate: {
+    title: 'Upper body',
+    subtitle: 'Arm and chest power',
+    description: 'Develop upper body strength',
+    color: 'from-pink-500 to-pink-600',
+    bgColor: 'bg-pink-500/10',
+    textColor: 'text-pink-400',
+    exercises: ['Push-ups', 'Pull-ups', 'Dips', 'Rows'],
+    requiredPoints: 500
+  },
+  advanced: {
+    title: 'Core',
+    subtitle: 'Midsection control',
+    description: 'Master core stability',
+    color: 'from-blue-500 to-blue-600',
+    bgColor: 'bg-blue-500/10',
+    textColor: 'text-blue-400',
+    exercises: ['Planks', 'Leg Raises', 'Russian Twists', 'Mountain Climbers'],
+    requiredPoints: 1500
+  },
+  elite: {
+    title: 'Full body',
+    subtitle: 'Complete training',
+    description: 'Total body conditioning',
+    color: 'from-lime-400 to-lime-500',
+    bgColor: 'bg-lime-400/10',
+    textColor: 'text-lime-400',
+    exercises: ['Burpees', 'Muscle-ups', 'Turkish Get-ups', 'Bear Crawls'],
+    requiredPoints: 3000
+  }
+};
+
+export default function LevelCard({ 
+  levelKey, 
+  currentLevel, 
+  userPoints = 0, 
+  index,
+  onClick 
+}) {
+  const level = levelData[levelKey];
+  const levelOrder = ['beginner', 'intermediate', 'advanced', 'elite'];
+  const currentLevelIndex = levelOrder.indexOf(currentLevel);
+  const thisLevelIndex = levelOrder.indexOf(levelKey);
+  
+  const isUnlocked = userPoints >= level.requiredPoints || thisLevelIndex <= currentLevelIndex;
+  const isCurrent = levelKey === currentLevel;
+  const isCompleted = thisLevelIndex < currentLevelIndex;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      onClick={() => isUnlocked && onClick?.(levelKey)}
+      className={cn(
+        "relative overflow-hidden rounded-3xl p-5 border transition-all duration-200 min-h-[140px]",
+        isUnlocked 
+          ? "cursor-pointer active:scale-[0.98] touch-manipulation" 
+          : "opacity-60 pointer-events-none",
+        `bg-gradient-to-br ${level.color} border-zinc-800`
+      )}
+    >
+      {/* Background decoration */}
+      <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-black/10 rounded-full" />
+
+      <div className="relative">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3 gap-3 relative z-10">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-white/20 rounded-full px-3 py-1">
+                <p className="text-white text-xs font-bold">{level.subtitle}</p>
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-1">{level.title}</h3>
+            <p className="text-white/70 text-sm">{level.description}</p>
+          </div>
+          
+          {!isUnlocked ? (
+            <div className="w-12 h-12 flex-shrink-0 rounded-2xl bg-white/20 flex items-center justify-center">
+              <Lock className="w-6 h-6 text-white" />
+            </div>
+          ) : (
+            <div className="w-12 h-12 flex-shrink-0 rounded-2xl bg-white/20 flex items-center justify-center">
+              <ChevronRight className="w-6 h-6 text-white" />
+            </div>
+          )}
+        </div>
+
+
+      </div>
+    </motion.div>
+  );
+}

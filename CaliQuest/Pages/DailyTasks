@@ -1,0 +1,512 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2, ArrowLeft, Trophy, Calendar, Sparkles, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { format } from 'date-fns';
+import DailyTaskCard from '@/components/daily/DailyTaskCard';
+import ExerciseCard from '@/components/daily/ExerciseCard';
+import ExerciseDetailModal from '@/components/daily/ExerciseDetailModal';
+import WorkoutProofUpload from '@/components/daily/WorkoutProofUpload';
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function DailyTasks() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [selectedExercise, setSelectedExercise] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
+  const [completedExercises, setCompletedExercises] = useState(new Set());
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  const { data: user } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => base44.auth.me()
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ['userProfile', user?.email],
+    queryFn: async () => {
+      const profiles = await base44.entities.UserProfile.filter({ user_id: user.email });
+      return profiles[0] || null;
+    },
+    enabled: !!user?.email
+  });
+
+  // Redirect to assessment if not completed
+  React.useEffect(() => {
+    if (user && (!profile || !profile.assessment_completed)) {
+      navigate(createPageUrl('Assessment'));
+    }
+  }, [user, profile, navigate]);
+
+  const { data: todayTask, isLoading: taskLoading, refetch: refetchTask } = useQuery({
+    queryKey: ['dailyTask', user?.email, today],
+    queryFn: async () => {
+      const tasks = await base44.entities.DailyTask.filter({ 
+        user_id: user.email,
+        date: today
+      });
+      
+      if (tasks.length > 0) {
+        return tasks[0];
+      }
+      
+      // Generate new task
+      return generateDailyTask(user.email, profile?.level || 'beginner');
+    },
+    enabled: !!user?.email && !!profile
+  });
+
+  const generateDailyTask = async (userId, userLevel, previousExerciseIds = []) => {
+    // Fetch exercises from database for the user's level
+    const exercises = await base44.entities.Exercise.filter({ level: userLevel });
+    
+    if (exercises.length === 0) {
+      throw new Error(`No exercises found for level: ${userLevel}`);
+    }
+
+    // Determine number of exercises based on level
+    const exerciseCount = userLevel === 'beginner' ? 4 : userLevel === 'intermediate' ? 5 : userLevel === 'advanced' ? 6 : 6;
+
+    // Try to exclude previously used exercises if possible
+    let availableExercises = exercises.filter(ex => !previousExerciseIds.includes(ex.id));
+    
+    // If not enough different exercises, use all exercises
+    if (availableExercises.length < exerciseCount) {
+      availableExercises = exercises;
+    }
+
+    // Shuffle and select unique exercises
+    const shuffled = [...availableExercises].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, Math.min(exerciseCount, shuffled.length));
+
+    // Generate workout with randomized reps/duration and points
+    const selectedExercises = selected.map(ex => {
+      // Parse the range from reps_or_duration (e.g., "5-10 reps" or "10-30 sec")
+      const rangeMatch = ex.reps_or_duration?.match(/(\d+)-(\d+)\s*(\w+)/);
+      let repsOrDuration = ex.reps_or_duration || '10 reps';
+      
+      if (rangeMatch) {
+        const min = parseInt(rangeMatch[1]);
+        const max = parseInt(rangeMatch[2]);
+        const unit = rangeMatch[3];
+        const randomValue = Math.floor(Math.random() * (max - min + 1)) + min;
+        repsOrDuration = `${randomValue} ${unit}`;
+      }
+      
+      // Use base_points from database with slight variation (±10%)
+      const variation = 0.9 + Math.random() * 0.2; // 0.9 to 1.1
+      const points = Math.round((ex.base_points || 30) * variation);
+      
+      return {
+        exercise_id: ex.id,
+        exercise_name: ex.name,
+        reps_or_duration: repsOrDuration,
+        points: points
+      };
+    });
+
+    // Calculate total and adjust if needed to stay within 200-250 range
+    let totalExp = selectedExercises.reduce((sum, ex) => sum + ex.points, 0);
+    
+    if (totalExp < 200) {
+      const deficit = 200 - totalExp;
+      const adjustment = Math.ceil(deficit / selectedExercises.length);
+      selectedExercises.forEach(ex => ex.points += adjustment);
+      totalExp = selectedExercises.reduce((sum, ex) => sum + ex.points, 0);
+    } else if (totalExp > 250) {
+      const excess = totalExp - 250;
+      const adjustment = Math.ceil(excess / selectedExercises.length);
+      selectedExercises.forEach(ex => {
+        ex.points = Math.max(15, ex.points - adjustment);
+      });
+      totalExp = selectedExercises.reduce((sum, ex) => sum + ex.points, 0);
+    }
+
+    // Final clamp to ensure range
+    if (totalExp < 200 || totalExp > 250) {
+      const targetExp = 225;
+      const scale = targetExp / totalExp;
+      selectedExercises.forEach(ex => {
+        ex.points = Math.round(ex.points * scale);
+      });
+    }
+
+    const taskData = {
+      date: today,
+      user_id: userId,
+      exercises: selectedExercises,
+      bonus_challenge: null,
+      completed: false,
+      total_points_earned: 0
+    };
+
+    return base44.entities.DailyTask.create(taskData);
+  };
+
+  const submitWorkoutMutation = useMutation({
+    mutationFn: async (submissionData) => {
+      return base44.entities.WorkoutSubmission.create({
+        user_id: user.email,
+        ...submissionData
+      });
+    },
+    onSuccess: (_, variables) => {
+      setCompletedExercises(prev => new Set([...prev, variables.exercise_id]));
+      queryClient.invalidateQueries(['userProfile']);
+      setShowProofModal(false);
+      setSelectedExercise(null);
+    }
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: async ({ taskId, totalPoints }) => {
+      // Update task
+      await base44.entities.DailyTask.update(taskId, {
+        completed: true,
+        completion_date: new Date().toISOString(),
+        total_points_earned: totalPoints
+      });
+
+      // Update user profile
+      if (profile) {
+        const newPoints = (profile.points || 0) + totalPoints;
+        const newWorkouts = (profile.stats?.workouts_completed || 0) + 1;
+        
+        await base44.entities.UserProfile.update(profile.id, {
+          points: newPoints,
+          stats: {
+            ...profile.stats,
+            workouts_completed: newWorkouts,
+            total_exercises: (profile.stats?.total_exercises || 0) + todayTask.exercises.length
+          }
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['dailyTask']);
+      queryClient.invalidateQueries(['userProfile']);
+    }
+  });
+
+  const handleCompleteExercise = (exercise) => {
+    setSelectedExercise(exercise);
+    setShowProofModal(true);
+  };
+
+  const handleViewDetails = async (exercise) => {
+    // Fetch full exercise details including video URL
+    const fullExercise = await base44.entities.Exercise.filter({ id: exercise.exercise_id });
+    if (fullExercise.length > 0) {
+      setSelectedExercise({ ...exercise, ...fullExercise[0] });
+    } else {
+      setSelectedExercise(exercise);
+    }
+    setShowDetailModal(true);
+  };
+
+  const handleSubmitProof = async (submissionData) => {
+    // Update the DailyTask exercise with notes
+    const updatedExercises = todayTask.exercises.map(ex => 
+      ex.exercise_id === submissionData.exercise_id 
+        ? { ...ex, notes: submissionData.exerciseNotes }
+        : ex
+    );
+    
+    await base44.entities.DailyTask.update(todayTask.id, {
+      exercises: updatedExercises
+    });
+    
+    await submitWorkoutMutation.mutateAsync(submissionData);
+    
+    // Check if all exercises completed
+    const allCompleted = todayTask.exercises.every(ex => 
+      completedExercises.has(ex.exercise_id) || ex.exercise_id === submissionData.exercise_id
+    );
+    
+    if (allCompleted) {
+      const totalPoints = todayTask.exercises.reduce((sum, ex) => sum + ex.points, 0);
+      await completeTaskMutation.mutateAsync({ 
+        taskId: todayTask.id, 
+        totalPoints 
+      });
+    }
+  };
+
+  const handleGenerateNew = () => {
+    if (todayTask && !todayTask.completed) {
+      setShowGenerateConfirm(true);
+    }
+  };
+
+  const confirmGenerateNew = async () => {
+    setShowGenerateConfirm(false);
+    
+    const userLevel = profile?.level || 'beginner';
+    
+    // Determine daily task limit based on skill level
+    const dailyLimitMap = {
+      beginner: 4,
+      intermediate: 5,
+      advanced: 6,
+      elite: 6
+    };
+    const dailyLimit = dailyLimitMap[userLevel];
+    
+    // Fetch all DailyTask entities for today
+    const allTodayTasks = await base44.entities.DailyTask.filter({ 
+      user_id: user.email,
+      date: today
+    });
+    
+    // Check if we're below the daily limit
+    const taskCount = allTodayTasks.length;
+    if (taskCount >= dailyLimit) {
+      toast.info(`You've reached your daily limit of ${dailyLimit} tasks.`);
+      return;
+    }
+    
+    // Collect all exercise IDs already assigned today
+    const assignedExerciseIds = new Set();
+    allTodayTasks.forEach(task => {
+      task.exercises?.forEach(ex => {
+        assignedExerciseIds.add(ex.exercise_id);
+      });
+    });
+    
+    // Fetch exercises for the user's level
+    const exercises = await base44.entities.Exercise.filter({ level: userLevel });
+    
+    if (exercises.length === 0) {
+      toast.error(`No exercises found for level: ${userLevel}`);
+      return;
+    }
+    
+    // Filter out already assigned exercises
+    const availableExercises = exercises.filter(ex => !assignedExerciseIds.has(ex.id));
+    
+    if (availableExercises.length === 0) {
+      toast.info('All exercises for your level have been assigned today.');
+      return;
+    }
+    
+    // Generate new task with available exercises
+    const exerciseCount = dailyLimit - taskCount; // Number of new tasks to create
+    const shuffled = [...availableExercises].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, Math.min(exerciseCount, availableExercises.length));
+    
+    const selectedExercises = selected.map(ex => {
+      const rangeMatch = ex.reps_or_duration?.match(/(\d+)-(\d+)\s*(\w+)/);
+      let repsOrDuration = ex.reps_or_duration || '10 reps';
+      
+      if (rangeMatch) {
+        const min = parseInt(rangeMatch[1]);
+        const max = parseInt(rangeMatch[2]);
+        const unit = rangeMatch[3];
+        const randomValue = Math.floor(Math.random() * (max - min + 1)) + min;
+        repsOrDuration = `${randomValue} ${unit}`;
+      }
+      
+      const variation = 0.9 + Math.random() * 0.2;
+      const points = Math.round((ex.base_points || 30) * variation);
+      
+      return {
+        exercise_id: ex.id,
+        exercise_name: ex.name,
+        reps_or_duration: repsOrDuration,
+        points: points
+      };
+    });
+    
+    // Create new incomplete task
+    const newTask = {
+      date: today,
+      user_id: user.email,
+      exercises: selectedExercises,
+      bonus_challenge: null,
+      completed: false,
+      total_points_earned: 0
+    };
+    
+    await base44.entities.DailyTask.create(newTask);
+    toast.success(`Created ${selectedExercises.length} new task${selectedExercises.length > 1 ? 's' : ''}.`);
+    
+    refetchTask();
+  };
+
+  const currentLevel = profile?.level || 'beginner';
+  const levelColor = levelColors[currentLevel];
+
+  if (taskLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: levelColor }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black pb-24">
+      {/* Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: `${levelColor}10` }} />
+      </div>
+
+      <div className="relative max-w-2xl mx-auto px-6 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" style={{ color: levelColor }} />
+              <h1 className="text-2xl font-bold text-white">Daily Tasks</h1>
+            </div>
+            {!todayTask?.completed && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGenerateNew}
+                className="text-zinc-400 hover:text-white"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Generate Quests
+              </Button>
+            )}
+          </div>
+          <p className="text-zinc-400 text-sm">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+        </motion.div>
+
+        {/* Daily Task Card */}
+        {todayTask && (
+          <DailyTaskCard
+            task={todayTask}
+            onStart={() => {}}
+            userLevel={profile?.level || 'beginner'}
+          />
+        )}
+
+        {/* Exercises List */}
+        {todayTask && !todayTask.completed && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-8"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Your Exercises</h2>
+              <span className="text-sm text-zinc-400">
+                {completedExercises.size}/{todayTask.exercises.length} done
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {todayTask.exercises.map((exercise, index) => (
+                <ExerciseCard
+                  key={exercise.exercise_id}
+                  exercise={exercise}
+                  index={index}
+                  completed={completedExercises.has(exercise.exercise_id)}
+                  onViewDetails={handleViewDetails}
+                  onComplete={handleCompleteExercise}
+                  userLevel={currentLevel}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Completed message */}
+        {todayTask?.completed && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mt-8 text-center"
+          >
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: levelColor }}>
+              <Trophy className="w-10 h-10 text-zinc-900" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Amazing Work!</h2>
+            <p className="text-zinc-400 mb-6">
+              You've completed today's tasks. Come back tomorrow for more!
+            </p>
+            <Button
+              onClick={() => navigate(createPageUrl('Home'))}
+              className="font-bold text-zinc-900"
+              style={{ backgroundColor: levelColor, hover: { backgroundColor: levelColor } }}
+            >
+              Back to Home
+            </Button>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Modals */}
+      <ExerciseDetailModal
+        exercise={selectedExercise}
+        open={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedExercise(null);
+        }}
+        onComplete={handleCompleteExercise}
+      />
+
+      <WorkoutProofUpload
+        exercise={selectedExercise}
+        taskId={todayTask?.id}
+        open={showProofModal}
+        onClose={() => {
+          setShowProofModal(false);
+          setSelectedExercise(null);
+        }}
+        onSubmit={handleSubmitProof}
+      />
+
+      {/* Generate Tasks Confirmation Modal */}
+      <Dialog open={showGenerateConfirm} onOpenChange={setShowGenerateConfirm}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Generate New Tasks</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              This will replace your current daily task with new exercises. Are you sure?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowGenerateConfirm(false)}
+              className="border-zinc-700 text-white hover:bg-zinc-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmGenerateNew}
+              className="font-bold text-zinc-900"
+              style={{ backgroundColor: levelColor }}
+            >
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

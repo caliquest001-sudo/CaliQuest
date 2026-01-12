@@ -1,0 +1,63 @@
+{
+  "name": "UserProfile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Reference to the user"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "User's display name"
+    },
+    "profile_picture": {
+      "type": "string",
+      "description": "URL to profile picture"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "elite"
+      ],
+      "default": "beginner",
+      "description": "Current calisthenics level"
+    },
+    "points": {
+      "type": "number",
+      "default": 0,
+      "description": "Total points earned"
+    },
+    "assessment_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user completed initial assessment"
+    },
+    "assessment_score": {
+      "type": "number",
+      "description": "Score from the assessment test"
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "workouts_completed": {
+          "type": "number",
+          "default": 0
+        },
+        "total_exercises": {
+          "type": "number",
+          "default": 0
+        },
+        "streak_days": {
+          "type": "number",
+          "default": 0
+        }
+      }
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}

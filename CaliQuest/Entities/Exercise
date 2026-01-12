@@ -1,0 +1,65 @@
+{
+  "name": "Exercise",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Exercise name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description"
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Step by step instructions"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "elite"
+      ],
+      "description": "Exercise difficulty level"
+    },
+    "base_points": {
+      "type": "number",
+      "description": "Base points for completing this exercise"
+    },
+    "reps_or_duration": {
+      "type": "string",
+      "description": "Recommended reps or duration (e.g. '3x12' or '30s')"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "URL to demonstration video"
+    },
+    "difficulty_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Difficulty rating 1-5"
+    },
+    "muscles_targeted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Muscle groups targeted"
+    },
+    "equipment_needed": {
+      "type": "string",
+      "description": "Equipment required if any"
+    }
+  },
+  "required": [
+    "name",
+    "level",
+    "base_points"
+  ]
+}

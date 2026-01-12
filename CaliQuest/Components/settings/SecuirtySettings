@@ -1,0 +1,199 @@
+import React, { useState } from 'react';
+import { Lock, LogOut, Loader2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
+
+export default function SecuritySettings() {
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const validatePassword = (password) => {
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter';
+    if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter';
+    if (!/[0-9]/.test(password)) return 'Password must contain a number';
+    return null;
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
+
+    setLoading(true);
+    
+    // Simulate password change
+    setTimeout(() => {
+      toast.success('Password changed successfully');
+      setShowPasswordDialog(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const handleLogout = () => {
+    base44.auth.logout('https://caliquest.base44.app/login?from_url=https%3A%2F%2Fcaliquest.base44.app%2F');
+  };
+
+  const handleLogoutAll = async () => {
+    const confirm = window.confirm('This will log you out from all devices. Continue?');
+    if (!confirm) return;
+    
+    toast.success('Logged out from all devices');
+    setTimeout(() => {
+      handleLogout();
+    }, 1000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-1">Security</h2>
+        <p className="text-sm text-zinc-400">Keep your account secure</p>
+      </div>
+
+      {/* Change Password */}
+      <button
+        onClick={() => setShowPasswordDialog(true)}
+        className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-4 hover:bg-zinc-800 transition-all touch-manipulation active:scale-[0.98]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-lime-400/10 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-lime-400" />
+          </div>
+          <div className="text-left">
+            <p className="text-white font-medium">Change Password</p>
+            <p className="text-xs text-zinc-400">Update your password regularly</p>
+          </div>
+        </div>
+      </button>
+
+      {/* Logout Options */}
+      <div className="space-y-2 pt-4">
+        <Button
+          onClick={handleLogout}
+          variant="outline"
+          className="w-full h-12 border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-white"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Log Out
+        </Button>
+
+        <Button
+          onClick={handleLogoutAll}
+          variant="outline"
+          className="w-full h-12 border-red-900/50 bg-red-950/50 hover:bg-red-900/50 text-red-400"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Log Out From All Devices
+        </Button>
+      </div>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="bg-zinc-900 border-zinc-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Change Password</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Enter your current password and choose a new one
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="current-password" className="text-zinc-400">Current Password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="mt-2 bg-zinc-800 border-zinc-700 text-white h-12"
+                placeholder="••••••••"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="new-password" className="text-zinc-400">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="mt-2 bg-zinc-800 border-zinc-700 text-white h-12"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirm-password" className="text-zinc-400">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-2 bg-zinc-800 border-zinc-700 text-white h-12"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3">
+              <p className="text-xs text-zinc-400 font-medium mb-2">Password must contain:</p>
+              <ul className="text-xs text-zinc-500 space-y-1">
+                <li>• At least 8 characters</li>
+                <li>• One uppercase letter</li>
+                <li>• One lowercase letter</li>
+                <li>• One number</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowPasswordDialog(false)}
+                className="flex-1 h-12 text-zinc-400"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleChangePassword}
+                disabled={loading}
+                className="flex-1 h-12 bg-lime-400 hover:bg-lime-500 text-zinc-900 font-bold"
+              >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Change Password
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -1,0 +1,54 @@
+{
+  "name": "Park",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Park name"
+    },
+    "location": {
+      "type": "string",
+      "description": "Address or location description"
+    },
+    "city": {
+      "type": "string",
+      "description": "City"
+    },
+    "country": {
+      "type": "string",
+      "description": "Country"
+    },
+    "description": {
+      "type": "string",
+      "description": "Park description"
+    },
+    "equipment_available": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of equipment available"
+    },
+    "bonus_multiplier": {
+      "type": "number",
+      "default": 1.2,
+      "description": "Points multiplier when working out at this park"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Photo of the park"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "GPS latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "GPS longitude"
+    }
+  },
+  "required": [
+    "name",
+    "location"
+  ]
+}

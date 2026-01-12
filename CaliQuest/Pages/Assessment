@@ -1,0 +1,284 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import AssessmentQuestion from '@/components/assessment/AssessmentQuestion';
+import AssessmentResult from '@/components/assessment/AssessmentResult';
+
+const assessmentQuestions = [
+  {
+    id: 1,
+    question: "How many regular push-ups can you do in one set?",
+    options: [
+      { value: 0, label: "0-5 push-ups" },
+      { value: 1, label: "6-15 push-ups" },
+      { value: 2, label: "16-30 push-ups" },
+      { value: 3, label: "30+ push-ups" }
+    ]
+  },
+  {
+    id: 2,
+    question: "Can you do pull-ups? If so, how many?",
+    options: [
+      { value: 0, label: "I can't do any yet" },
+      { value: 1, label: "1-5 pull-ups" },
+      { value: 2, label: "6-12 pull-ups" },
+      { value: 3, label: "12+ pull-ups" }
+    ]
+  },
+  {
+    id: 3,
+    question: "How long can you hold a plank?",
+    options: [
+      { value: 0, label: "Less than 30 seconds" },
+      { value: 1, label: "30 seconds - 1 minute" },
+      { value: 2, label: "1-2 minutes" },
+      { value: 3, label: "Over 2 minutes" }
+    ]
+  },
+  {
+    id: 4,
+    question: "Can you perform a pistol squat (single-leg squat)?",
+    options: [
+      { value: 0, label: "No, I can't" },
+      { value: 1, label: "I can do it with support" },
+      { value: 2, label: "Yes, a few reps each leg" },
+      { value: 3, label: "Yes, multiple reps easily" }
+    ]
+  },
+  {
+    id: 5,
+    question: "How would you describe your current training experience?",
+    options: [
+      { value: 0, label: "Complete beginner" },
+      { value: 1, label: "Some experience (< 1 year)" },
+      { value: 2, label: "Intermediate (1-3 years)" },
+      { value: 3, label: "Advanced (3+ years)" }
+    ]
+  },
+  {
+    id: 6,
+    question: "Can you perform a muscle-up?",
+    options: [
+      { value: 0, label: "No, not yet" },
+      { value: 1, label: "I'm working on it" },
+      { value: 2, label: "Yes, 1-3 reps" },
+      { value: 3, label: "Yes, multiple clean reps" }
+    ]
+  },
+  {
+    id: 7,
+    question: "Can you hold a handstand?",
+    options: [
+      { value: 0, label: "No, I can't" },
+      { value: 1, label: "Against a wall only" },
+      { value: 2, label: "Freestanding for a few seconds" },
+      { value: 3, label: "Solid freestanding hold (30s+)" }
+    ]
+  }
+];
+
+export default function Assessment() {
+  const navigate = useNavigate();
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [showResult, setShowResult] = useState(false);
+  const [calculatedLevel, setCalculatedLevel] = useState(null);
+  const [totalScore, setTotalScore] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  const handleSelect = (value) => {
+    setAnswers(prev => ({
+      ...prev,
+      [currentQuestion]: value
+    }));
+  };
+
+  const handleNext = () => {
+    if (currentQuestion < assessmentQuestions.length - 1) {
+      setCurrentQuestion(prev => prev + 1);
+    } else {
+      calculateResult();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(prev => prev - 1);
+    }
+  };
+
+  const calculateResult = () => {
+    const score = Object.values(answers).reduce((sum, val) => sum + val, 0);
+    const maxScore = assessmentQuestions.length * 3;
+    const percentage = (score / maxScore) * 100;
+    
+    let level;
+    if (percentage < 25) {
+      level = 'beginner';
+    } else if (percentage < 50) {
+      level = 'intermediate';
+    } else if (percentage < 75) {
+      level = 'advanced';
+    } else {
+      level = 'elite';
+    }
+    
+    setTotalScore(score * 10);
+    setCalculatedLevel(level);
+    setShowResult(true);
+  };
+
+  const handleContinue = async () => {
+    setSaving(true);
+
+    try {
+      const user = await base44.auth.me();
+      const profiles = await base44.entities.UserProfile.filter({ user_id: user.email });
+
+      const profileData = {
+        level: calculatedLevel,
+        assessment_completed: true,
+        assessment_score: totalScore
+      };
+
+      if (profiles.length > 0) {
+        await base44.entities.UserProfile.update(profiles[0].id, {
+          ...profileData,
+          points: 0  // Reset XP to 0
+        });
+      } else {
+        await base44.entities.UserProfile.create({
+          user_id: user.email,
+          display_name: user.full_name,
+          ...profileData,
+          points: 0,
+          stats: {
+            workouts_completed: 0,
+            total_exercises: 0,
+            streak_days: 0
+          }
+        });
+      }
+
+      // Update or create LeaderboardEntry (enforce uniqueness)
+      const existingEntries = await base44.entities.LeaderboardEntry.filter({ user_id: user.email });
+      const username = profiles.length > 0 ? profiles[0].display_name : user.full_name;
+      const currentXP = profiles.length > 0 ? (profiles[0].points || 0) : 0;
+
+      if (existingEntries.length > 0) {
+        // Update existing entry - keep cumulative XP, update skill level
+        await base44.entities.LeaderboardEntry.update(existingEntries[0].id, {
+          username: username,
+          skill_level: calculatedLevel,
+          total_xp: currentXP
+        });
+      } else {
+        // Create new entry
+        await base44.entities.LeaderboardEntry.create({
+          user_id: user.email,
+          username: username,
+          skill_level: calculatedLevel,
+          total_xp: currentXP
+        });
+      }
+
+      // Delete existing daily tasks for today to regenerate with new level
+      const today = new Date().toISOString().split('T')[0];
+      const existingTasks = await base44.entities.DailyTask.filter({ 
+        user_id: user.email,
+        date: today
+      });
+
+      for (const task of existingTasks) {
+        await base44.entities.DailyTask.delete(task.id);
+      }
+
+      // Wait a moment for the database to update before navigating
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      navigate(createPageUrl('Home'), { replace: true });
+    } catch (error) {
+      console.error('Failed to save assessment:', error);
+    }
+
+    setSaving(false);
+  };
+
+  const currentQ = assessmentQuestions[currentQuestion];
+  const canProceed = answers[currentQuestion] !== undefined;
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Background effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-lime-400/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-400/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative max-w-xl mx-auto px-6 py-12">
+        {!showResult ? (
+          <>
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <h1 className="text-sm font-medium text-lime-400 uppercase tracking-wider mb-2">
+                Find Your Level
+              </h1>
+              <p className="text-zinc-400">
+                Answer honestly to get a personalized training plan
+              </p>
+            </motion.div>
+
+            {/* Question */}
+            <AnimatePresence mode="wait">
+              <AssessmentQuestion
+                key={currentQuestion}
+                question={currentQ.question}
+                options={currentQ.options}
+                selectedValue={answers[currentQuestion]}
+                onSelect={handleSelect}
+                questionNumber={currentQuestion + 1}
+                totalQuestions={assessmentQuestions.length}
+              />
+            </AnimatePresence>
+
+            {/* Navigation */}
+            <div className="flex justify-between mt-8">
+              <Button
+                variant="ghost"
+                onClick={handleBack}
+                disabled={currentQuestion === 0}
+                className="text-zinc-400 hover:text-white"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+
+              <Button
+                onClick={handleNext}
+                disabled={!canProceed}
+                className="bg-lime-400 hover:bg-lime-500 text-zinc-900 font-bold px-6"
+              >
+                {currentQuestion === assessmentQuestions.length - 1 ? 'See Results' : 'Next'}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <AssessmentResult
+            level={calculatedLevel}
+            score={totalScore}
+            onContinue={handleContinue}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

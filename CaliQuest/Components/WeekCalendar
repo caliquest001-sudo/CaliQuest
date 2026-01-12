@@ -1,0 +1,52 @@
+import React from 'react';
+import { format, startOfWeek, addDays } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function WeekCalendar({ currentLevel = 'beginner' }) {
+  const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Start on Monday
+  const daysOfWeek = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const levelColor = levelColors[currentLevel];
+
+  return (
+    <div className="flex gap-2">
+      {daysOfWeek.map((day, index) => {
+        const isToday = format(day, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+        
+        return (
+          <div
+            key={index}
+            className={cn(
+              "flex-1 rounded-2xl p-2 text-center transition-all",
+              isToday ? "ring-2" : "bg-zinc-800/50"
+            )}
+            style={{
+              backgroundColor: isToday ? levelColor : undefined,
+              ringColor: isToday ? levelColor : undefined
+            }}
+          >
+            <div className={cn(
+              "text-xs font-medium mb-1",
+              isToday ? "text-black" : "text-zinc-500"
+            )}>
+              {format(day, 'EEE')}
+            </div>
+            <div className={cn(
+              "text-lg font-bold",
+              isToday ? "text-black" : "text-white"
+            )}>
+              {format(day, 'd')}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

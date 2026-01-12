@@ -1,0 +1,89 @@
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check } from 'lucide-react';
+import { cn } from "@/lib/utils";
+
+export default function AssessmentQuestion({ 
+  question, 
+  options, 
+  selectedValue, 
+  onSelect,
+  questionNumber,
+  totalQuestions 
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      transition={{ duration: 0.3 }}
+      className="w-full"
+    >
+      {/* Progress indicator */}
+      <div className="mb-8">
+        <div className="flex justify-between text-sm text-zinc-400 mb-2">
+          <span>Question {questionNumber}</span>
+          <span>{questionNumber} / {totalQuestions}</span>
+        </div>
+        <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+          <motion.div 
+            className="h-full bg-gradient-to-r from-lime-400 to-emerald-500 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
+            transition={{ duration: 0.5 }}
+          />
+        </div>
+      </div>
+
+      {/* Question */}
+      <h2 className="text-2xl md:text-3xl font-bold text-white mb-8 leading-tight">
+        {question}
+      </h2>
+
+      {/* Options */}
+      <div className="space-y-3">
+        {options.map((option, index) => (
+          <motion.button
+            key={option.value}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            onClick={() => onSelect(option.value)}
+            className={cn(
+              "w-full p-4 rounded-2xl text-left transition-all duration-200",
+              "border-2 flex items-center justify-between group",
+              selectedValue === option.value
+                ? "bg-lime-400/10 border-lime-400 text-white"
+                : "bg-zinc-800/50 border-zinc-700/50 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800"
+            )}
+          >
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm",
+                selectedValue === option.value
+                  ? "bg-lime-400 text-zinc-900"
+                  : "bg-zinc-700 text-zinc-400 group-hover:bg-zinc-600"
+              )}>
+                {String.fromCharCode(65 + index)}
+              </div>
+              <span className="font-medium">{option.label}</span>
+            </div>
+            
+            <AnimatePresence>
+              {selectedValue === option.value && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  className="w-6 h-6 rounded-full bg-lime-400 flex items-center justify-center"
+                >
+                  <Check className="w-4 h-4 text-zinc-900" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}

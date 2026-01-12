@@ -1,0 +1,89 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Play, Trophy, Target, CheckCircle2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const levelColors = {
+  beginner: '#FCF1C3',
+  intermediate: '#FC0D0F',
+  advanced: '#FF1B4C',
+  elite: '#C0C0C0'
+};
+
+export default function ExerciseCard({ 
+  exercise, 
+  onViewDetails, 
+  onComplete, 
+  completed = false,
+  index = 0,
+  userLevel = 'beginner'
+}) {
+  const levelColor = levelColors[userLevel];
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className={cn(
+        "relative overflow-hidden rounded-2xl p-4 border transition-all",
+        completed 
+          ? "bg-emerald-500/10 border-emerald-500/30" 
+          : "bg-zinc-800/50 border-zinc-700/50 hover:border-zinc-600"
+      )}
+    >
+      <div className="flex items-start gap-4">
+        {/* Exercise number/check */}
+        <div className={cn(
+          "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+        )} style={{ backgroundColor: completed ? '#10B98120' : `${levelColor}20` }}>
+          {completed ? (
+            <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+          ) : (
+            <span className="text-lg font-bold" style={{ color: levelColor }}>{index + 1}</span>
+          )}
+        </div>
+
+        {/* Exercise info */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-white mb-1">{exercise.exercise_name}</h3>
+          
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <div className="flex items-center gap-1.5 text-sm">
+              <Target className="w-3.5 h-3.5 text-zinc-500" />
+              <span className="text-zinc-400">{exercise.reps_or_duration}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-amber-400 font-semibold">{exercise.points} XP</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onViewDetails(exercise)}
+              className="border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs"
+            >
+              <Play className="w-3 h-3 mr-1" />
+              How to do it
+            </Button>
+            
+            {!completed && onComplete && (
+              <Button
+                size="sm"
+                onClick={() => onComplete(exercise)}
+                className="text-zinc-900 text-xs font-bold"
+                style={{ backgroundColor: levelColor }}
+              >
+                Complete
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
